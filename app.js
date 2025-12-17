@@ -43,6 +43,19 @@ function getUnitDisplayName(unitCode) {
     return unitNames[unitCode] || unitCode;
 }
 
+// Convert from ng/μL to output units
+function convertFromNgPerUl(value, outputUnits) {
+    const conversions = {
+        'ng_uL': 1,           // ng/μL to ng/μL: no conversion
+        'ng_mL': 1000,        // ng/μL to ng/mL: multiply by 1000
+        'pg_uL': 1000,        // ng/μL to pg/μL: multiply by 1000
+        'pg_mL': 1000000      // ng/μL to pg/mL: multiply by 1,000,000
+    };
+
+    const factor = conversions[outputUnits] || 1;
+    return value * factor;
+}
+
 // Parse a single PicoGreen file
 function parsePicogreenFile(filename, content) {
     const lines = content.split('\n');
@@ -815,15 +828,22 @@ document.getElementById('calculateConcs').addEventListener('click', () => {
 
 function displayResultsTable() {
     const container = document.getElementById('resultsTable');
+    const outputUnits = document.getElementById('outputUnits').value;
+    const unitDisplay = getUnitDisplayName(outputUnits);
 
     const displayData = state.finalResults.map(r => ({
-        ...r,
-        Conc_in_well: r.Conc_in_well.toFixed(6),
-        Original_Concentration_ng_uL: r.Original_Concentration_ng_uL.toFixed(6)
+        File: r.File,
+        Plate: r.Plate,
+        Well: r.Well,
+        Sample_ID: r.Sample_ID,
+        Fluorescence: r.Fluorescence,
+        [`Conc in well (${unitDisplay})`]: convertFromNgPerUl(r.Conc_in_well, outputUnits).toFixed(4),
+        [`Final Conc (${unitDisplay})`]: convertFromNgPerUl(r.Original_Concentration_ng_uL, outputUnits).toFixed(4),
+        QC_Flag: r.QC_Flag
     }));
 
     const html = createTableHTML(displayData,
-        ['File', 'Plate', 'Well', 'Sample_ID', 'Fluorescence', 'Conc_in_well', 'Original_Concentration_ng_uL', 'QC_Flag']
+        ['File', 'Plate', 'Well', 'Sample_ID', 'Fluorescence', `Conc in well (${unitDisplay})`, `Final Conc (${unitDisplay})`, 'QC_Flag']
     );
     container.innerHTML = html;
 }
@@ -831,6 +851,8 @@ function displayResultsTable() {
 function displaySummaryStats() {
     const results = state.finalResults;
     const okResults = results.filter(r => r.QC_Flag === 'OK');
+    const outputUnits = document.getElementById('outputUnits').value;
+    const unitDisplay = getUnitDisplayName(outputUnits);
 
     if (okResults.length > 0) {
         const concentrations = okResults.map(r => r.Original_Concentration_ng_uL);
@@ -840,14 +862,20 @@ function displaySummaryStats() {
         const min = Math.min(...concentrations);
         const max = Math.max(...concentrations);
 
+        // Convert to output units
+        const meanConverted = convertFromNgPerUl(mean, outputUnits);
+        const medianConverted = convertFromNgPerUl(median, outputUnits);
+        const minConverted = convertFromNgPerUl(min, outputUnits);
+        const maxConverted = convertFromNgPerUl(max, outputUnits);
+
         document.getElementById('summaryStats').textContent =
             `Total Samples: ${results.length}\n` +
             `Samples with QC = OK: ${okResults.length}\n` +
             `Below Detection Limit: ${results.filter(r => r.QC_Flag === 'Below Detection Limit').length}\n` +
             `Above Curve Range: ${results.filter(r => r.QC_Flag === 'Above Curve Range').length}\n` +
-            `Mean Concentration (OK samples): ${mean.toFixed(6)} ng/μL\n` +
-            `Median Concentration (OK samples): ${median.toFixed(6)} ng/μL\n` +
-            `Range: ${min.toFixed(6)} - ${max.toFixed(6)} ng/μL`;
+            `Mean Concentration (OK samples): ${meanConverted.toFixed(4)} ${unitDisplay}\n` +
+            `Median Concentration (OK samples): ${medianConverted.toFixed(4)} ${unitDisplay}\n` +
+            `Range: ${minConverted.toFixed(4)} - ${maxConverted.toFixed(4)} ${unitDisplay}`;
     } else {
         document.getElementById('summaryStats').textContent = 'No samples with OK QC status';
     }

@@ -206,6 +206,14 @@
                     <label>Detection Limit (fluorescence):
                         <input type="number" id="detectionLimit" value="100" min="0">
                     </label>
+                    <label>Output Units:
+                        <select id="outputUnits">
+                            <option value="ng_uL">ng/μL</option>
+                            <option value="ng_mL" selected>ng/mL</option>
+                            <option value="pg_uL">pg/μL</option>
+                            <option value="pg_mL">pg/mL</option>
+                        </select>
+                    </label>
                     <button id="calculateConcs" class="btn btn-primary">Calculate Concentrations</button>
                     <button id="downloadResults" class="btn btn-success">Download Results</button>
                 </div>
@@ -218,8 +226,8 @@
 
             <div class="box">
                 <h2>Sample Concentrations</h2>
-                <p class="hint">Final concentrations are in ng/μL, corrected for dilution factor.</p>
-                <p class="hint">Note: All standard units (μg/μL, μg/mL, ng/μL, ng/mL, pg/μL, pg/mL) are automatically converted to ng/μL for calculations.</p>
+                <p class="hint">Concentrations are corrected for dilution factor and displayed in your selected output units.</p>
+                <p class="hint">Note: All standard units are automatically converted for calculations. Results are calculated in ng/μL internally, then converted to your output units.</p>
                 <div id="resultsTable" class="table-container"></div>
             </div>
         </div>
