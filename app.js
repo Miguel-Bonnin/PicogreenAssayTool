@@ -637,16 +637,15 @@ document.getElementById('generateCurve').addEventListener('click', () => {
 
     state.standardsData = standardsData;
 
-    // Fit curve - exclude 0 concentration standards (blanks)
+    // Fit curve - include all standards (including blank at 0 concentration)
     const curveType = document.getElementById('curveType').value;
-    const standardsForCurve = standardsData.filter(s => s.Concentration_ng_uL > 0);
 
-    if (standardsForCurve.length < 2) {
-        alert('Need at least 2 non-zero standard concentrations to generate curve');
+    if (standardsData.length < 2) {
+        alert('Need at least 2 standard concentrations to generate curve');
         return;
     }
 
-    const dataPoints = standardsForCurve.map(s => [s.Concentration_ng_uL, s.Mean_Fluorescence]);
+    const dataPoints = standardsData.map(s => [s.Concentration_ng_uL, s.Mean_Fluorescence]);
 
     let result;
     if (curveType === 'linear') {
@@ -660,10 +659,28 @@ document.getElementById('generateCurve').addEventListener('click', () => {
     state.curveModel = result;
     state.rSquared = result.r2;
 
-    // Display statistics
-    const excludedCount = standardsData.length - standardsForCurve.length;
-    const statsText = `R-squared: ${result.r2.toFixed(4)}\nCurve Type: ${curveType}\nStandard Points Used: ${standardsForCurve.length}` +
-        (excludedCount > 0 ? `\n(Excluded ${excludedCount} zero-concentration blank${excludedCount > 1 ? 's' : ''})` : '');
+    // Display statistics with blank QC comparison
+    let statsText = `R-squared: ${result.r2.toFixed(4)}\nCurve Type: ${curveType}\nStandard Points Used: ${standardsData.length}`;
+
+    // If there's a blank (0 concentration), compare y-intercept with actual blank fluorescence
+    const blankStandard = standardsData.find(s => s.Concentration_ng_uL === 0);
+    if (blankStandard && curveType === 'linear') {
+        const yIntercept = result.equation[0]; // b in y = mx + b
+        const blankFluor = blankStandard.Mean_Fluorescence;
+        const difference = yIntercept - blankFluor;
+        const percentDiff = ((Math.abs(difference) / blankFluor) * 100).toFixed(1);
+
+        statsText += `\n\nBlank QC:`;
+        statsText += `\nMeasured Blank: ${blankFluor.toFixed(2)}`;
+        statsText += `\nCalculated Y-intercept: ${yIntercept.toFixed(2)}`;
+        statsText += `\nDifference: ${difference.toFixed(2)} (${percentDiff}%)`;
+
+        // Add warning if difference is significant
+        if (Math.abs(difference) / blankFluor > 0.20) {
+            statsText += `\n⚠️ Warning: >20% difference`;
+        }
+    }
+
     document.getElementById('curveStats').textContent = statsText;
 
     // Display standards table
