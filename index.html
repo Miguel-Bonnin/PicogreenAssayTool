@@ -19,30 +19,82 @@
         </header>
 
         <nav class="tabs">
-            <button class="tab-button active" data-tab="import">File Import</button>
+            <button class="tab-button active" data-tab="import">Data Input</button>
             <button class="tab-button" data-tab="mapping">Well Mapping</button>
             <button class="tab-button" data-tab="curve">Standard Curve</button>
             <button class="tab-button" data-tab="results">Results</button>
         </nav>
 
-        <!-- File Import Tab -->
+        <!-- Data Input Tab -->
         <div id="import" class="tab-content active">
             <div class="row">
                 <div class="box">
-                    <h2>File Upload</h2>
-                    <input type="file" id="fileInput" multiple accept=".txt,.xpt">
-                    <button id="loadFiles" class="btn btn-primary">Load Files</button>
-                    <button id="downloadParsed" class="btn btn-info">Download Parsed Data</button>
+                    <h2>Data Input Options</h2>
+                    <div class="input-method-selector">
+                        <label>
+                            <input type="radio" name="inputMethod" value="paste" checked>
+                            Paste Data (Recommended)
+                        </label>
+                        <label>
+                            <input type="radio" name="inputMethod" value="file">
+                            Upload File
+                        </label>
+                    </div>
                 </div>
 
                 <div class="box">
-                    <h2>File Status</h2>
-                    <pre id="fileStatus">No files selected</pre>
+                    <h2>Data Status</h2>
+                    <pre id="fileStatus">Enter fluorescence data below</pre>
                 </div>
+            </div>
+
+            <!-- Paste Data Section -->
+            <div id="pasteDataSection" class="box">
+                <h2>96-Well Plate - Fluorescence Data</h2>
+                <p class="hint">Copy data from Excel (8 rows x 12 columns) and paste into any cell below, or edit cells directly.</p>
+                <p class="hint"><strong>Tip:</strong> Select all cells (Ctrl+A in Excel), copy (Ctrl+C), click cell A1 below, and paste (Ctrl+V).</p>
+
+                <div class="plate-controls">
+                    <button id="loadFromGrid" class="btn btn-primary">Load Data from Grid</button>
+                    <button id="clearGrid" class="btn btn-warning">Clear Grid</button>
+                    <button id="fillSample" class="btn btn-info">Fill with Sample Data</button>
+                </div>
+
+                <div class="plate-grid-container">
+                    <table id="plateGrid" class="plate-grid">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>1</th>
+                                <th>2</th>
+                                <th>3</th>
+                                <th>4</th>
+                                <th>5</th>
+                                <th>6</th>
+                                <th>7</th>
+                                <th>8</th>
+                                <th>9</th>
+                                <th>10</th>
+                                <th>11</th>
+                                <th>12</th>
+                            </tr>
+                        </thead>
+                        <tbody id="plateGridBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- File Upload Section -->
+            <div id="fileUploadSection" class="box" style="display: none;">
+                <h2>File Upload</h2>
+                <input type="file" id="fileInput" multiple accept=".txt,.xpt">
+                <button id="loadFiles" class="btn btn-primary">Load Files</button>
             </div>
 
             <div class="box">
                 <h2>Parsed Data</h2>
+                <button id="downloadParsed" class="btn btn-info">Download Parsed Data</button>
                 <div id="parsedDataTable" class="table-container"></div>
             </div>
 

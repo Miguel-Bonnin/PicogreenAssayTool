@@ -60,6 +60,172 @@ function parsePicogreenFile(filename, content) {
     return data;
 }
 
+// Initialize 96-well plate grid
+function initializePlateGrid() {
+    const tbody = document.getElementById('plateGridBody');
+    const rowLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+
+    rowLetters.forEach((letter) => {
+        const row = document.createElement('tr');
+
+        // Row header
+        const th = document.createElement('th');
+        th.textContent = letter;
+        row.appendChild(th);
+
+        // 12 columns
+        for (let col = 1; col <= 12; col++) {
+            const td = document.createElement('td');
+            td.contentEditable = true;
+            td.dataset.row = letter;
+            td.dataset.col = col;
+            td.textContent = '';
+
+            // Handle paste event
+            td.addEventListener('paste', handlePaste);
+
+            // Handle input
+            td.addEventListener('input', (e) => {
+                // Only allow numbers and decimal points
+                const value = e.target.textContent;
+                const cleaned = value.replace(/[^\d.-]/g, '');
+                if (value !== cleaned) {
+                    e.target.textContent = cleaned;
+                }
+            });
+
+            row.appendChild(td);
+        }
+
+        tbody.appendChild(row);
+    });
+}
+
+// Handle paste from Excel
+function handlePaste(e) {
+    e.preventDefault();
+
+    const clipboardData = e.clipboardData || window.clipboardData;
+    const pastedText = clipboardData.getData('text');
+
+    // Split by rows and columns (Excel uses \t for columns, \n for rows)
+    const rows = pastedText.split('\n').map(row => row.split('\t'));
+
+    const targetCell = e.target;
+    const startRow = Array.from(document.querySelectorAll('#plateGrid tbody tr')).indexOf(targetCell.parentElement);
+    const startCol = Array.from(targetCell.parentElement.children).indexOf(targetCell) - 1; // -1 for row header
+
+    const tbody = document.getElementById('plateGridBody');
+    const allRows = tbody.querySelectorAll('tr');
+
+    rows.forEach((rowData, i) => {
+        const rowIndex = startRow + i;
+        if (rowIndex >= allRows.length) return;
+
+        const cells = allRows[rowIndex].querySelectorAll('td');
+
+        rowData.forEach((cellData, j) => {
+            const colIndex = startCol + j;
+            if (colIndex >= cells.length) return;
+
+            const cleaned = cellData.trim().replace(/[^\d.-]/g, '');
+            cells[colIndex].textContent = cleaned;
+        });
+    });
+}
+
+// Load data from grid
+function loadDataFromGrid() {
+    const allData = [];
+    const rowLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    const tbody = document.getElementById('plateGridBody');
+    const rows = tbody.querySelectorAll('tr');
+
+    rows.forEach((row, rowIndex) => {
+        const cells = row.querySelectorAll('td');
+        cells.forEach((cell, colIndex) => {
+            const value = parseFloat(cell.textContent.trim());
+            if (!isNaN(value) && value !== 0) {
+                allData.push({
+                    File: 'Manual Entry',
+                    Plate: 'Plate 1',
+                    DateTime: new Date().toLocaleString(),
+                    Row: rowLetters[rowIndex],
+                    Column: colIndex + 1,
+                    Well: `${rowLetters[rowIndex]}${colIndex + 1}`,
+                    Fluorescence: value
+                });
+            }
+        });
+    });
+
+    if (allData.length === 0) {
+        alert('No valid data found in grid. Please enter fluorescence values.');
+        return;
+    }
+
+    state.parsedData = allData;
+
+    // Update file status
+    document.getElementById('fileStatus').textContent =
+        `Data loaded from grid\nTotal wells: ${allData.length}\nPlates: 1`;
+
+    // Display parsed data table
+    displayParsedDataTable();
+
+    // Create heatmap
+    createPlateHeatmap();
+
+    // Initialize well mappings
+    initializeWellMappings();
+
+    alert('Data loaded successfully from grid!');
+}
+
+// Clear grid
+function clearGrid() {
+    if (confirm('Are you sure you want to clear all grid data?')) {
+        const cells = document.querySelectorAll('#plateGrid td');
+        cells.forEach(cell => cell.textContent = '');
+    }
+}
+
+// Fill with sample data
+function fillSampleData() {
+    const tbody = document.getElementById('plateGridBody');
+    const rows = tbody.querySelectorAll('tr');
+
+    // Sample data: create a gradient pattern
+    rows.forEach((row, rowIndex) => {
+        const cells = row.querySelectorAll('td');
+        cells.forEach((cell, colIndex) => {
+            // Create sample fluorescence values that increase across the plate
+            const value = 1000 + (rowIndex * 500) + (colIndex * 200) + Math.random() * 100;
+            cell.textContent = Math.round(value);
+        });
+    });
+
+    alert('Sample data filled! Click "Load Data from Grid" to use it.');
+}
+
+// Toggle between paste and file input methods
+document.querySelectorAll('input[name="inputMethod"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        if (e.target.value === 'paste') {
+            document.getElementById('pasteDataSection').style.display = 'block';
+            document.getElementById('fileUploadSection').style.display = 'none';
+        } else {
+            document.getElementById('pasteDataSection').style.display = 'none';
+            document.getElementById('fileUploadSection').style.display = 'block';
+        }
+    });
+});
+
+// Initialize grid on page load
+document.addEventListener('DOMContentLoaded', () => {
+    initializePlateGrid();
+});
+
 // Tab navigation
 document.querySelectorAll('.tab-button').forEach(button => {
     button.addEventListener('click', () => {
@@ -74,6 +240,11 @@ document.querySelectorAll('.tab-button').forEach(button => {
         document.getElementById(tabName).classList.add('active');
     });
 });
+
+// Button event listeners
+document.getElementById('loadFromGrid').addEventListener('click', loadDataFromGrid);
+document.getElementById('clearGrid').addEventListener('click', clearGrid);
+document.getElementById('fillSample').addEventListener('click', fillSampleData);
 
 // File Import Tab
 document.getElementById('loadFiles').addEventListener('click', async () => {
