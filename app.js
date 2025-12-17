@@ -665,14 +665,14 @@ document.getElementById('generateCurve').addEventListener('click', () => {
     // If there's a blank (0 concentration), compare y-intercept with actual blank fluorescence
     const blankStandard = standardsData.find(s => s.Concentration_ng_uL === 0);
     if (blankStandard && curveType === 'linear') {
-        const yIntercept = result.equation[0]; // b in y = mx + b
+        const [m, b] = result.equation; // regression.js returns [slope, intercept]
         const blankFluor = blankStandard.Mean_Fluorescence;
-        const difference = yIntercept - blankFluor;
+        const difference = b - blankFluor;
         const percentDiff = ((Math.abs(difference) / blankFluor) * 100).toFixed(1);
 
         statsText += `\n\nBlank QC:`;
         statsText += `\nMeasured Blank: ${blankFluor.toFixed(2)}`;
-        statsText += `\nCalculated Y-intercept: ${yIntercept.toFixed(2)}`;
+        statsText += `\nCalculated Y-intercept: ${b.toFixed(2)}`;
         statsText += `\nDifference: ${difference.toFixed(2)} (${percentDiff}%)`;
 
         // Add warning if difference is significant
@@ -808,13 +808,13 @@ document.getElementById('calculateConcs').addEventListener('click', () => {
         const curveType = document.getElementById('curveType').value;
         if (curveType === 'linear') {
             // For linear: y = mx + b, solve for x: x = (y - b) / m
-            const [b, m] = state.curveModel.equation;
+            // regression.js returns [slope, intercept]
+            const [m, b] = state.curveModel.equation;
             concInWell = (s.Fluorescence - b) / m;
 
             // Debug logging for first sample
             if (s.Well === 'B6' || Math.random() < 0.01) {
-                console.log(`Sample ${s.Well}: Fluorescence=${s.Fluorescence}, b=${b}, m=${m}, concInWell=${concInWell}`);
-                console.log('Curve equation:', state.curveModel.equation);
+                console.log(`Sample ${s.Well}: Fluorescence=${s.Fluorescence}, m=${m}, b=${b}, concInWell=${concInWell}`);
             }
         } else {
             // For polynomial, use numerical search
