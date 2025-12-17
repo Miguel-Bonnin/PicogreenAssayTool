@@ -9,6 +9,40 @@ const state = {
     selectedRows: new Set()
 };
 
+// Unit conversion helper - converts any concentration to ng/μL
+function convertToNgPerUl(value, units) {
+    const conversions = {
+        'ug_uL': 1000,        // μg/μL to ng/μL: multiply by 1000
+        'ug_mL': 1,           // μg/mL to ng/μL: multiply by 1 (1 μg/mL = 1 ng/μL)
+        'ng_uL': 1,           // ng/μL to ng/μL: no conversion
+        'ng_mL': 0.001,       // ng/mL to ng/μL: divide by 1000
+        'pg_uL': 0.001,       // pg/μL to ng/μL: divide by 1000
+        'pg_mL': 0.000001,    // pg/mL to ng/μL: divide by 1,000,000
+        'μg/μL': 1000,
+        'μg/mL': 1,
+        'ng/μL': 1,
+        'ng/mL': 0.001,
+        'pg/μL': 0.001,
+        'pg/mL': 0.000001
+    };
+
+    const factor = conversions[units] || 1;
+    return value * factor;
+}
+
+// Get display name for units
+function getUnitDisplayName(unitCode) {
+    const unitNames = {
+        'ug_uL': 'μg/μL',
+        'ug_mL': 'μg/mL',
+        'ng_uL': 'ng/μL',
+        'ng_mL': 'ng/mL',
+        'pg_uL': 'pg/μL',
+        'pg_mL': 'pg/mL'
+    };
+    return unitNames[unitCode] || unitCode;
+}
+
 // Parse a single PicoGreen file
 function parsePicogreenFile(filename, content) {
     const lines = content.split('\n');
@@ -464,7 +498,10 @@ document.getElementById('applyQuick').addEventListener('click', () => {
 
     const type = document.getElementById('quickType').value;
     const conc = parseFloat(document.getElementById('standardConc').value);
-    const units = document.getElementById('standardUnits').value === 'ng_mL' ? 'ng/mL' : 'ng/μL';
+    const unitCode = document.getElementById('standardUnits').value;
+    const units = getUnitDisplayName(unitCode);
+
+    const count = state.selectedRows.size;
 
     state.selectedRows.forEach(index => {
         if (state.wellMappings[index]) {
@@ -481,7 +518,7 @@ document.getElementById('applyQuick').addEventListener('click', () => {
 
     displayMappingTable();
     state.selectedRows.clear();
-    alert(`Updated ${state.selectedRows.size} wells`);
+    alert(`Updated ${count} wells`);
 });
 
 // Reset mappings
@@ -553,10 +590,8 @@ document.getElementById('generateCurve').addEventListener('click', () => {
     // Group by concentration and calculate means
     const grouped = {};
     standards.forEach(s => {
-        // Convert ng/mL to ng/μL if needed
-        const conc = s.Units === 'ng/mL' ?
-            parseFloat(s.Concentration_ng_uL) / 1000 :
-            parseFloat(s.Concentration_ng_uL);
+        // Convert all units to ng/μL for consistent calculations
+        const conc = convertToNgPerUl(parseFloat(s.Concentration_ng_uL), s.Units);
 
         if (!grouped[conc]) {
             grouped[conc] = {

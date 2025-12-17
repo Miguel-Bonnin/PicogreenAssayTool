@@ -143,12 +143,16 @@
                     </label>
                     <div id="standardInputs" style="display: none;">
                         <label>Concentration:
-                            <input type="number" id="standardConc" value="0" min="0" step="0.1">
+                            <input type="number" id="standardConc" value="0" min="0" step="0.001">
                         </label>
                         <label>Units:
                             <select id="standardUnits">
+                                <option value="ug_uL">μg/μL</option>
+                                <option value="ug_mL">μg/mL</option>
                                 <option value="ng_uL">ng/μL</option>
                                 <option value="ng_mL">ng/mL</option>
+                                <option value="pg_uL">pg/μL</option>
+                                <option value="pg_mL">pg/mL</option>
                             </select>
                         </label>
                     </div>
@@ -215,7 +219,7 @@
             <div class="box">
                 <h2>Sample Concentrations</h2>
                 <p class="hint">Final concentrations are in ng/μL, corrected for dilution factor.</p>
-                <p class="hint">Note: If standards were in ng/mL, they were automatically converted for calculations.</p>
+                <p class="hint">Note: All standard units (μg/μL, μg/mL, ng/μL, ng/mL, pg/μL, pg/mL) are automatically converted to ng/μL for calculations.</p>
                 <div id="resultsTable" class="table-container"></div>
             </div>
         </div>
