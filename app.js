@@ -637,9 +637,16 @@ document.getElementById('generateCurve').addEventListener('click', () => {
 
     state.standardsData = standardsData;
 
-    // Fit curve
+    // Fit curve - exclude 0 concentration standards (blanks)
     const curveType = document.getElementById('curveType').value;
-    const dataPoints = standardsData.map(s => [s.Concentration_ng_uL, s.Mean_Fluorescence]);
+    const standardsForCurve = standardsData.filter(s => s.Concentration_ng_uL > 0);
+
+    if (standardsForCurve.length < 2) {
+        alert('Need at least 2 non-zero standard concentrations to generate curve');
+        return;
+    }
+
+    const dataPoints = standardsForCurve.map(s => [s.Concentration_ng_uL, s.Mean_Fluorescence]);
 
     let result;
     if (curveType === 'linear') {
@@ -654,8 +661,10 @@ document.getElementById('generateCurve').addEventListener('click', () => {
     state.rSquared = result.r2;
 
     // Display statistics
-    document.getElementById('curveStats').textContent =
-        `R-squared: ${result.r2.toFixed(4)}\nCurve Type: ${curveType}\nStandard Points: ${standardsData.length}`;
+    const excludedCount = standardsData.length - standardsForCurve.length;
+    const statsText = `R-squared: ${result.r2.toFixed(4)}\nCurve Type: ${curveType}\nStandard Points Used: ${standardsForCurve.length}` +
+        (excludedCount > 0 ? `\n(Excluded ${excludedCount} zero-concentration blank${excludedCount > 1 ? 's' : ''})` : '');
+    document.getElementById('curveStats').textContent = statsText;
 
     // Display standards table
     displayStandardsTable();
@@ -669,14 +678,26 @@ document.getElementById('generateCurve').addEventListener('click', () => {
 function displayStandardsTable() {
     const container = document.getElementById('standardsTable');
 
-    const displayData = state.standardsData.map(s => ({
-        'Original Concentration': `${s.Original_Conc} ${s.Original_Units}`,
-        'Concentration (ng/μL)': s.Concentration_ng_uL.toFixed(4),
-        'Mean_Fluorescence': s.Mean_Fluorescence.toFixed(2),
-        'SD_Fluorescence': s.SD_Fluorescence.toFixed(2),
-        'SE_Fluorescence': s.SE_Fluorescence.toFixed(2),
-        'N': s.N
-    }));
+    const displayData = state.standardsData.map(s => {
+        // Use scientific notation for very small concentrations (< 0.0001 ng/μL)
+        let concDisplay;
+        if (s.Concentration_ng_uL === 0) {
+            concDisplay = '0.0000';
+        } else if (s.Concentration_ng_uL < 0.0001) {
+            concDisplay = s.Concentration_ng_uL.toExponential(4);
+        } else {
+            concDisplay = s.Concentration_ng_uL.toFixed(4);
+        }
+
+        return {
+            'Original Concentration': `${s.Original_Conc} ${s.Original_Units}`,
+            'Concentration (ng/μL)': concDisplay,
+            'Mean_Fluorescence': s.Mean_Fluorescence.toFixed(2),
+            'SD_Fluorescence': s.SD_Fluorescence.toFixed(2),
+            'SE_Fluorescence': s.SE_Fluorescence.toFixed(2),
+            'N': s.N
+        };
+    });
 
     const html = createTableHTML(displayData,
         ['Original Concentration', 'Concentration (ng/μL)', 'Mean_Fluorescence', 'SD_Fluorescence', 'SE_Fluorescence', 'N']
@@ -771,9 +792,6 @@ document.getElementById('calculateConcs').addEventListener('click', () => {
             // For linear: y = mx + b, solve for x: x = (y - b) / m
             const [b, m] = state.curveModel.equation;
             concInWell = (s.Fluorescence - b) / m;
-
-            // Debug logging
-            console.log(`Sample ${s.Well}: Fluorescence=${s.Fluorescence}, b=${b}, m=${m}, concInWell=${concInWell}`);
         } else {
             // For polynomial, use numerical search
             const minConc = Math.min(...state.standardsData.map(d => d.Concentration_ng_uL));
@@ -831,16 +849,21 @@ function displayResultsTable() {
     const outputUnits = document.getElementById('outputUnits').value;
     const unitDisplay = getUnitDisplayName(outputUnits);
 
-    const displayData = state.finalResults.map(r => ({
-        File: r.File,
-        Plate: r.Plate,
-        Well: r.Well,
-        Sample_ID: r.Sample_ID,
-        Fluorescence: r.Fluorescence,
-        [`Conc in well (${unitDisplay})`]: convertFromNgPerUl(r.Conc_in_well, outputUnits).toFixed(4),
-        [`Final Conc (${unitDisplay})`]: convertFromNgPerUl(r.Original_Concentration_ng_uL, outputUnits).toFixed(4),
-        QC_Flag: r.QC_Flag
-    }));
+    const displayData = state.finalResults.map(r => {
+        const concInWellConverted = convertFromNgPerUl(r.Conc_in_well, outputUnits);
+        const finalConcConverted = convertFromNgPerUl(r.Original_Concentration_ng_uL, outputUnits);
+
+        return {
+            File: r.File,
+            Plate: r.Plate,
+            Well: r.Well,
+            Sample_ID: r.Sample_ID,
+            Fluorescence: r.Fluorescence,
+            [`Conc in well (${unitDisplay})`]: concInWellConverted.toFixed(4),
+            [`Final Conc (${unitDisplay})`]: finalConcConverted.toFixed(4),
+            QC_Flag: r.QC_Flag
+        };
+    });
 
     const html = createTableHTML(displayData,
         ['File', 'Plate', 'Well', 'Sample_ID', 'Fluorescence', `Conc in well (${unitDisplay})`, `Final Conc (${unitDisplay})`, 'QC_Flag']
