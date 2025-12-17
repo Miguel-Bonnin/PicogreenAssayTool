@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PicoGreen Assay Analysis</title>
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- External Libraries -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/regression/2.0.1/regression.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>PicoGreen Assay Analysis</h1>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-button active" data-tab="import">File Import</button>
+            <button class="tab-button" data-tab="mapping">Well Mapping</button>
+            <button class="tab-button" data-tab="curve">Standard Curve</button>
+            <button class="tab-button" data-tab="results">Results</button>
+        </nav>
+
+        <!-- File Import Tab -->
+        <div id="import" class="tab-content active">
+            <div class="row">
+                <div class="box">
+                    <h2>File Upload</h2>
+                    <input type="file" id="fileInput" multiple accept=".txt,.xpt">
+                    <button id="loadFiles" class="btn btn-primary">Load Files</button>
+                    <button id="downloadParsed" class="btn btn-info">Download Parsed Data</button>
+                </div>
+
+                <div class="box">
+                    <h2>File Status</h2>
+                    <pre id="fileStatus">No files selected</pre>
+                </div>
+            </div>
+
+            <div class="box">
+                <h2>Parsed Data</h2>
+                <div id="parsedDataTable" class="table-container"></div>
+            </div>
+
+            <div class="box">
+                <h2>Plate Heatmap</h2>
+                <div id="plateHeatmap"></div>
+            </div>
+        </div>
+
+        <!-- Well Mapping Tab -->
+        <div id="mapping" class="tab-content">
+            <div class="row">
+                <div class="box">
+                    <h2>Dilution Settings</h2>
+                    <label>Sample Volume (μL):
+                        <input type="number" id="sampleVolume" value="1" min="0.1" max="100" step="0.1">
+                    </label>
+                    <label>Buffer Volume (μL):
+                        <input type="number" id="bufferVolume" value="99" min="0" max="1000">
+                    </label>
+                    <label>PicoGreen Volume (μL):
+                        <input type="number" id="reagentVolume" value="100" min="0" max="1000">
+                    </label>
+                    <div class="info-box">
+                        <strong>Total Volume:</strong> <span id="totalVolume">200 μL</span><br>
+                        <strong>Dilution Factor:</strong> <span id="dilutionFactor">200.0x</span>
+                    </div>
+                </div>
+
+                <div class="box">
+                    <h2>Mapping Actions</h2>
+                    <input type="file" id="mappingFile" accept=".xlsx">
+                    <button id="loadMapping" class="btn btn-info">Load Mapping</button>
+                    <button id="downloadMapping" class="btn btn-success">Export Mapping</button>
+                    <button id="resetMapping" class="btn btn-warning">Reset All Mappings</button>
+                </div>
+
+                <div class="box">
+                    <h2>Quick Edit</h2>
+                    <label>Well Type:
+                        <select id="quickType">
+                            <option value="Sample">Sample</option>
+                            <option value="Standard">Standard</option>
+                            <option value="Empty">Empty</option>
+                        </select>
+                    </label>
+                    <div id="standardInputs" style="display: none;">
+                        <label>Concentration:
+                            <input type="number" id="standardConc" value="0" min="0" step="0.1">
+                        </label>
+                        <label>Units:
+                            <select id="standardUnits">
+                                <option value="ng_uL">ng/μL</option>
+                                <option value="ng_mL">ng/mL</option>
+                            </select>
+                        </label>
+                    </div>
+                    <button id="applyQuick" class="btn btn-primary">Apply to Selected Wells</button>
+                    <p class="hint">Select rows in the table below, then click apply.</p>
+                </div>
+            </div>
+
+            <div class="box">
+                <h2>Well Mapping Table</h2>
+                <p class="hint">Click on rows to select, then use Quick Edit above. You can also edit cells directly.</p>
+                <div id="mappingTable" class="table-container"></div>
+            </div>
+        </div>
+
+        <!-- Standard Curve Tab -->
+        <div id="curve" class="tab-content">
+            <div class="row">
+                <div class="box">
+                    <h2>Curve Settings</h2>
+                    <label>Curve Type:
+                        <select id="curveType">
+                            <option value="linear">Linear</option>
+                            <option value="poly2">Polynomial (2nd order)</option>
+                            <option value="poly3">Polynomial (3rd order)</option>
+                        </select>
+                    </label>
+                    <button id="generateCurve" class="btn btn-primary">Generate Standard Curve</button>
+
+                    <h3>Curve Statistics</h3>
+                    <pre id="curveStats">Generate curve to see statistics</pre>
+                </div>
+
+                <div class="box">
+                    <h2>Standards Data</h2>
+                    <div id="standardsTable" class="table-container"></div>
+                </div>
+            </div>
+
+            <div class="box">
+                <h2>Standard Curve Plot</h2>
+                <div id="standardCurvePlot"></div>
+            </div>
+        </div>
+
+        <!-- Results Tab -->
+        <div id="results" class="tab-content">
+            <div class="row">
+                <div class="box">
+                    <h2>Calculation Settings</h2>
+                    <label>Detection Limit (fluorescence):
+                        <input type="number" id="detectionLimit" value="100" min="0">
+                    </label>
+                    <button id="calculateConcs" class="btn btn-primary">Calculate Concentrations</button>
+                    <button id="downloadResults" class="btn btn-success">Download Results</button>
+                </div>
+
+                <div class="box">
+                    <h2>Summary Statistics</h2>
+                    <pre id="summaryStats">Calculate concentrations to see statistics</pre>
+                </div>
+            </div>
+
+            <div class="box">
+                <h2>Sample Concentrations</h2>
+                <p class="hint">Final concentrations are in ng/μL, corrected for dilution factor.</p>
+                <p class="hint">Note: If standards were in ng/mL, they were automatically converted for calculations.</p>
+                <div id="resultsTable" class="table-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+---
+title: "PicoGreen Assay Analysis Pipeline"
+author: "Lab Analysis"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(shiny)
+library(DT)
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(stringr)
+library(plotly)
+library(shinydashboard)
+library(shinyFiles)
+library(openxlsx)
+#install.packages(c("shiny", "shinydashboard", "DT", "ggplot2", "dplyr", "readr", "stringr", "plotly", "openxlsx"))
+
+```
+
+```{r}
+setwd("C:/Picogreen")
+shiny::runApp("picogreen_shiny_app.R")
+
+```
