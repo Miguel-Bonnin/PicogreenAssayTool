@@ -696,11 +696,12 @@ function displayStandardsTable() {
     const container = document.getElementById('standardsTable');
 
     const displayData = state.standardsData.map(s => {
-        // Use scientific notation for very small concentrations (< 0.0001 ng/μL)
+        // Use scientific notation for very small concentrations (< 0.001 ng/μL)
+        // This ensures values like 0.00025 show as 2.5000e-4 instead of 0.0003
         let concDisplay;
         if (s.Concentration_ng_uL === 0) {
             concDisplay = '0.0000';
-        } else if (s.Concentration_ng_uL < 0.0001) {
+        } else if (s.Concentration_ng_uL < 0.001) {
             concDisplay = s.Concentration_ng_uL.toExponential(4);
         } else {
             concDisplay = s.Concentration_ng_uL.toFixed(4);
@@ -809,6 +810,12 @@ document.getElementById('calculateConcs').addEventListener('click', () => {
             // For linear: y = mx + b, solve for x: x = (y - b) / m
             const [b, m] = state.curveModel.equation;
             concInWell = (s.Fluorescence - b) / m;
+
+            // Debug logging for first sample
+            if (s.Well === 'B6' || Math.random() < 0.01) {
+                console.log(`Sample ${s.Well}: Fluorescence=${s.Fluorescence}, b=${b}, m=${m}, concInWell=${concInWell}`);
+                console.log('Curve equation:', state.curveModel.equation);
+            }
         } else {
             // For polynomial, use numerical search
             const minConc = Math.min(...state.standardsData.map(d => d.Concentration_ng_uL));
