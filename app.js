@@ -758,6 +758,9 @@ document.getElementById('calculateConcs').addEventListener('click', () => {
             // For linear: y = mx + b, solve for x: x = (y - b) / m
             const [b, m] = state.curveModel.equation;
             concInWell = (s.Fluorescence - b) / m;
+
+            // Debug logging
+            console.log(`Sample ${s.Well}: Fluorescence=${s.Fluorescence}, b=${b}, m=${m}, concInWell=${concInWell}`);
         } else {
             // For polynomial, use numerical search
             const minConc = Math.min(...state.standardsData.map(d => d.Concentration_ng_uL));
@@ -815,8 +818,8 @@ function displayResultsTable() {
 
     const displayData = state.finalResults.map(r => ({
         ...r,
-        Conc_in_well: r.Conc_in_well.toFixed(2),
-        Original_Concentration_ng_uL: r.Original_Concentration_ng_uL.toFixed(2)
+        Conc_in_well: r.Conc_in_well.toFixed(6),
+        Original_Concentration_ng_uL: r.Original_Concentration_ng_uL.toFixed(6)
     }));
 
     const html = createTableHTML(displayData,
@@ -842,9 +845,9 @@ function displaySummaryStats() {
             `Samples with QC = OK: ${okResults.length}\n` +
             `Below Detection Limit: ${results.filter(r => r.QC_Flag === 'Below Detection Limit').length}\n` +
             `Above Curve Range: ${results.filter(r => r.QC_Flag === 'Above Curve Range').length}\n` +
-            `Mean Concentration (OK samples): ${mean.toFixed(2)} ng/μL\n` +
-            `Median Concentration (OK samples): ${median.toFixed(2)} ng/μL\n` +
-            `Range: ${min.toFixed(2)} - ${max.toFixed(2)} ng/μL`;
+            `Mean Concentration (OK samples): ${mean.toFixed(6)} ng/μL\n` +
+            `Median Concentration (OK samples): ${median.toFixed(6)} ng/μL\n` +
+            `Range: ${min.toFixed(6)} - ${max.toFixed(6)} ng/μL`;
     } else {
         document.getElementById('summaryStats').textContent = 'No samples with OK QC status';
     }
