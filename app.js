@@ -968,3 +968,145 @@ document.getElementById('downloadResults').addEventListener('click', () => {
 
     XLSX.writeFile(wb, `picogreen_results_${new Date().toISOString().split('T')[0]}.xlsx`);
 });
+
+// Export concentrations in 96-well plate format (8x12 matrix)
+function exportPlateFormat() {
+    if (!state.finalResults) {
+        alert('No results to export. Please calculate concentrations first.');
+        return;
+    }
+
+    const outputUnits = document.getElementById('outputUnits').value;
+
+    // Create a map for quick lookup by well position
+    const wellMap = new Map();
+    state.finalResults.forEach(result => {
+        const finalConc = convertFromNgPerUl(result.Original_Concentration_ng_uL, outputUnits);
+        wellMap.set(result.Well, finalConc.toFixed(4));
+    });
+
+    // Build CSV content in 96-well plate format
+    let csvContent = `,1,2,3,4,5,6,7,8,9,10,11,12\n`;
+    const rowLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+
+    for (const rowLetter of rowLetters) {
+        csvContent += rowLetter;
+        for (let col = 1; col <= 12; col++) {
+            const wellName = `${rowLetter}${col}`;
+            const value = wellMap.get(wellName) || '';
+            csvContent += `,${value}`;
+        }
+        csvContent += '\n';
+    }
+
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `picogreen_plate_format_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Export concentrations in long format (column-wise: A1, B1, C1... A2, B2, C2...)
+function exportColumnWise() {
+    if (!state.finalResults) {
+        alert('No results to export. Please calculate concentrations first.');
+        return;
+    }
+
+    const outputUnits = document.getElementById('outputUnits').value;
+    const unitDisplay = getUnitDisplayName(outputUnits);
+
+    // Sort column-wise: by number first, then by letter
+    const sorted = [...state.finalResults].sort((a, b) => {
+        const aMatch = a.Well.match(/([A-Z]+)(\d+)/);
+        const bMatch = b.Well.match(/([A-Z]+)(\d+)/);
+
+        if (aMatch && bMatch) {
+            const [, aLetter, aNum] = aMatch;
+            const [, bLetter, bNum] = bMatch;
+
+            // Compare numbers first
+            if (aNum !== bNum) return parseInt(aNum) - parseInt(bNum);
+            // Then compare letters
+            return aLetter.localeCompare(bLetter);
+        }
+        return a.Well.localeCompare(b.Well);
+    });
+
+    // Build CSV content
+    let csvContent = `Well,Concentration (${unitDisplay}),QC_Flag\n`;
+    sorted.forEach(result => {
+        const finalConc = convertFromNgPerUl(result.Original_Concentration_ng_uL, outputUnits);
+        csvContent += `${result.Well},${finalConc.toFixed(4)},${result.QC_Flag}\n`;
+    });
+
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `picogreen_column_wise_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Export concentrations in long format (row-wise: A1, A2, A3... B1, B2, B3...)
+function exportRowWise() {
+    if (!state.finalResults) {
+        alert('No results to export. Please calculate concentrations first.');
+        return;
+    }
+
+    const outputUnits = document.getElementById('outputUnits').value;
+    const unitDisplay = getUnitDisplayName(outputUnits);
+
+    // Sort row-wise: by letter first, then by number
+    const sorted = [...state.finalResults].sort((a, b) => {
+        const aMatch = a.Well.match(/([A-Z]+)(\d+)/);
+        const bMatch = b.Well.match(/([A-Z]+)(\d+)/);
+
+        if (aMatch && bMatch) {
+            const [, aLetter, aNum] = aMatch;
+            const [, bLetter, bNum] = bMatch;
+
+            // Compare letters first
+            if (aLetter !== bLetter) return aLetter.localeCompare(bLetter);
+            // Then compare numbers
+            return parseInt(aNum) - parseInt(bNum);
+        }
+        return a.Well.localeCompare(b.Well);
+    });
+
+    // Build CSV content
+    let csvContent = `Well,Concentration (${unitDisplay}),QC_Flag\n`;
+    sorted.forEach(result => {
+        const finalConc = convertFromNgPerUl(result.Original_Concentration_ng_uL, outputUnits);
+        csvContent += `${result.Well},${finalConc.toFixed(4)},${result.QC_Flag}\n`;
+    });
+
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `picogreen_row_wise_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Event listeners for new export buttons
+document.addEventListener('DOMContentLoaded', () => {
+    const exportPlateBtn = document.getElementById('exportPlateFormat');
+    const exportColumnBtn = document.getElementById('exportColumnWise');
+    const exportRowBtn = document.getElementById('exportRowWise');
+
+    if (exportPlateBtn) exportPlateBtn.addEventListener('click', exportPlateFormat);
+    if (exportColumnBtn) exportColumnBtn.addEventListener('click', exportColumnWise);
+    if (exportRowBtn) exportRowBtn.addEventListener('click', exportRowWise);
+});
